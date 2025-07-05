@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ร้านก๋วยเตี๋ยวหมูเลียงเจ๊น้อง</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #fefefe; }
+    h1, h3, h4 { text-align: center; }
+    .menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .item { background: #e0f7fa; padding: 10px; border-radius: 10px; cursor: pointer; text-align: center; }
+    .item:hover { background: #b2ebf2; }
+    .summary { margin-top: 20px; }
+    button { padding: 10px 20px; font-size: 16px; margin: 5px; }
+    .bill, .history, .report { white-space: pre-wrap; background: #f1f8e9; padding: 10px; border-radius: 10px; margin-top: 10px; }
+    input[type="number"] { padding: 8px; font-size: 16px; width: 100px; text-align: center; }
+    label { font-weight: bold; }
+  </style>
+</head>
+<body>
+<button onclick="saveOrder()">💾 บันทึกออเดอร์</button>
+<button onclick="showPendingOrders()">📂 โหลดออเดอร์</button>
+<div class="history" id="pendingList"></div>
+<h1>POS ร้านก๋วยเตี๋ยว</h1>
+
+<div style="text-align: center; margin-bottom: 10px;">
+  <label>โต๊ะเลขที่:</label>
+  <input type="number" id="tableNumber" min="1" placeholder="เช่น 5" />
+</div>
+
+<div class="menu" id="menu"></div>
+
+<div class="summary">
+  <h3>รวม: <span id="total">0</span> บาท</h3>
+  <button onclick="checkout()">✅ คิดเงิน</button>
+  <button onclick="undoItem()">↩️ ลบรายการล่าสุด</button>
+  <button onclick="resetAll()">🗑️ ล้างยอดทั้งหมด</button>
+  <div class="bill" id="bill"></div>
+  <h4>ยอดขายวันนี้: <span id="sales">0</span> บาท</h4>
+  <button onclick="showHistory()">📜 ดูประวัติการขาย</button>
+  <button onclick="exportCSV()">📥 ส่งออก CSV</button>
+  <button onclick="showReport()">📊 รายงานยอดขายแยกตามโต๊ะ</button>
+  <div class="history" id="history"></div>
+  <div class="report" id="report"></div>
+</div>
+<script>
+let pendingOrders = {}; // ใช้เก็บรายการของแต่ละโต๊ะ
+const menuItems = [
+  { name: "ก๋วยเตี๋ยวหมูเลียง", price: 50 },
+  { name: "เส้นเล็กแห้ง", price: 40 },
+  { name: "เกาเหลา", price: 50 },
+  { name: "น้ำเปล่า", price: 10 },
+  { name: "น้ำอัดลม", price: 15 },
+];
+
+let order = [];
+let salesTotal = Number(localStorage.getItem("salesTotal")) || 0;
+let historyData = JSON.parse(localStorage.getItem("historyData") || "[]");
+
+const menuDiv = document.getElementById("menu");
+const totalSpan = document.getElementById("total");
+const salesSpan = document.getElementById("sales");
+const billDiv = document.getElementById("bill");
+const historyDiv = document.getElementById("history");
+const reportDiv = document.getElementById("report");
+const tableInput = document.getElementById("tableNumber");
+
+salesSpan.textContent = salesTotal;
+
+// สร้างเมนู
+menuItems.forEach(item => {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.textContent = `${item.name} - ${item.price} บาท`;
+  div.onclick = () => {
+    order.push(item);
+    updateTotal();
+  };
+  menuDiv.appendChild(div);
+});
+
+function updateTotal() {
+  const total = order.reduce((sum, item) => sum + item.price, 0);
+  totalSpan.textContent = total;
+   // แสดงรายการชั่วคราวในใบเสร็จ
+  const tableNo = tableInput.value.trim() || "-";
+  let text = `รายการโต๊ะ ${tableNo}\n`;
+  order.forEach(item => {
+    text += `- ${item.name} (${item.price} บาท)\n`;
+  });
+  text += `รวมทั้งหมด: ${total} บาท`;
+  billDiv.textContent = text;
+}
+
+function checkout() {
+  const tableNo = tableInput.value.trim();
+  if (!tableNo) {
+    alert("กรุณาใส่เลขโต๊ะก่อนคิดเงิน");
+    return;
+  }
+
+  if (order.length === 0) {
+    alert("ยังไม่มีรายการสั่ง");
+    return;
+  }
+
+  const time = new Date().toLocaleString("th-TH");
+  const total = order.reduce((sum, item) => sum + item.price, 0);
+
+  let billText = `ใบเสร็จ (โต๊ะ ${tableNo})\n`;
+  order.forEach(item => {
+    billText += `- ${item.name} (${item.price} บาท)\n`;
+  });
+  billText += `รวมทั้งหมด: ${total} บาท\nเวลา: ${time}`;
+
+  billDiv.textContent = billText;
+
+  historyData.push({
+    table: tableNo,
+    items: [...order],
+    total,
+    time
+  });
+
+  salesTotal += total;
+  localStorage.setItem("salesTotal", salesTotal);
+  localStorage.setItem("historyData", JSON.stringify(historyData));
+  
+   // ส่งข้อมูลไป Google Sheet
+fetch("https://script.google.com/macros/s/AKfycbwi4dZUNFJabRap4erLWBumtUSzi0szMuRLZvFjnXsmt9VRN2ZeEi_txAfFtJ45NlysWQ/exec", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    table: tableNo,
+    items: order.map(i => i.name),
+    total: total
+  })
+});
+  
+  
+// ล้างบิล
+  salesSpan.textContent = salesTotal;
+  order = [];
+  updateTotal();
+  historyDiv.textContent = "";
+  reportDiv.textContent = "";
+  delete pendingOrders[tableNo]; // ล้างออเดอร์โต๊ะนั้นหลังคิดเงิน
+}
+
+function undoItem() {
+  if (order.length > 0) {
+    order.pop();
+    updateTotal();
+  } else {
+    alert("ไม่มีรายการให้ลบ");
+  }
+}
+
+function resetAll() {
+  if (confirm("แน่ใจหรือไม่ว่าจะล้างยอดขายและประวัติทั้งหมด?")) {
+    localStorage.removeItem("salesTotal");
+    localStorage.removeItem("historyData");
+    order = [];
+    salesTotal = 0;
+    historyData = [];
+    updateTotal();
+    salesSpan.textContent = "0";
+    billDiv.textContent = "";
+    historyDiv.textContent = "";
+    reportDiv.textContent = "";
+    alert("ล้างข้อมูลแล้วเรียบร้อย");
+  }
+}
+
+function showHistory() {
+  if (historyData.length === 0) {
+    historyDiv.textContent = "ยังไม่มีประวัติการขาย";
+    return;
+  }
+
+  let text = "ประวัติการขาย:\n";
+  historyData.slice().reverse().forEach((record, index) => {
+    text += `\n#${historyData.length - index} | โต๊ะ ${record.table} | เวลา: ${record.time}\n`;
+    record.items.forEach(i => {
+      text += `- ${i.name} (${i.price} บาท)\n`;
+    });
+    text += `รวม: ${record.total} บาท\n`;
+  });
+  historyDiv.textContent = text;
+  reportDiv.textContent = "";
+}
+
+function showReport() {
+  if (historyData.length === 0) {
+    reportDiv.textContent = "ยังไม่มีข้อมูล";
+    return;
+  }
+
+  const summary = {};
+
+  historyData.forEach(entry => {
+    if (!summary[entry.table]) summary[entry.table] = 0;
+    summary[entry.table] += entry.total;
+  });
+
+  let text = "รายงานยอดขายแยกตามโต๊ะ:\n";
+  Object.entries(summary).forEach(([table, total]) => {
+    text += `โต๊ะ ${table}: ${total} บาท\n`;
+  });
+
+  reportDiv.textContent = text;
+  historyDiv.textContent = "";
+}
+function exportCSV() {
+  if (historyData.length === 0) {
+    alert("ยังไม่มีข้อมูลให้ส่งออก");
+    return;
+  }
+
+  let csv = "โต๊ะ,เวลา,รายการ,ราคารวม\n";
+
+  historyData.forEach(entry => {
+    const items = entry.items.map(i => i.name).join(" + ");
+    csv += `${entry.table},"${entry.time}","${items}",${entry.total}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", "pos_gw_tiew_history.csv");
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+function saveOrder() {
+  const tableNo = tableInput.value.trim();
+  if (!tableNo) {
+    alert("กรุณาใส่เลขโต๊ะ");
+    return;
+  }
+
+  if (order.length === 0) {
+    alert("ยังไม่มีรายการในออเดอร์");
+    return;
+  }
+
+  pendingOrders[tableNo] = [...order]; // บันทึกแบบแยกแต่ละโต๊ะ
+  alert("บันทึกออเดอร์โต๊ะ " + tableNo + " เรียบร้อยแล้ว");
+}
+
+function loadOrder() {
+  const tableNo = tableInput.value.trim();
+  if (!tableNo) {
+    alert("กรุณาใส่เลขโต๊ะ");
+    return;
+  }
+
+  if (!pendingOrders[tableNo]) {
+    alert("ไม่มีออเดอร์ที่บันทึกไว้สำหรับโต๊ะนี้");
+    return;
+  }
+
+  order = [...pendingOrders[tableNo]]; // โหลดรายการกลับมา
+  updateTotal(); // 🟢 สำคัญ! เพื่อให้แสดงผลที่หน้าจอ
+  alert("โหลดออเดอร์โต๊ะ " + tableNo + " เรียบร้อยแล้ว");
+}
+function showPendingOrders() {
+  const keys = Object.keys(pendingOrders);
+  const pendingDiv = document.getElementById("pendingList");
+
+  if (keys.length === 0) {
+    pendingDiv.textContent = "ยังไม่มีโต๊ะที่บันทึกออเดอร์ไว้";
+    return;
+  }
+
+  let html = "📋 โต๊ะที่บันทึกออเดอร์ไว้:\n";
+  keys.forEach(tableNo => {
+    html += `➡️ <button onclick="loadOrderByTable('${tableNo}')">โต๊ะ ${tableNo}</button>\n`;
+  });
+
+  pendingDiv.innerHTML = html;
+}
+
+function loadOrderByTable(tableNo) {
+  if (!pendingOrders[tableNo]) {
+    alert("ไม่พบออเดอร์ของโต๊ะนี้");
+    return;
+  }
+
+  order = [...pendingOrders[tableNo]];
+  tableInput.value = tableNo;
+  updateTotal();
+  alert(`โหลดออเดอร์โต๊ะ ${tableNo} เรียบร้อยแล้ว`);
+}
+
+</script>
+
+</body>
+</html>
