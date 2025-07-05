@@ -162,6 +162,51 @@
       border-color: #667eea;
     }
     
+    .quantity-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .quantity-btn {
+      background: #667eea;
+      color: white;
+      border: none;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      font-size: 1.2em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .quantity-btn:hover {
+      background: #5a67d8;
+      transform: scale(1.1);
+    }
+    
+    .quantity-input {
+      width: 60px;
+      height: 35px;
+      text-align: center;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: 600;
+      background: white;
+    }
+    
+    .quantity-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
     .add-btn {
       background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
       color: white;
@@ -214,7 +259,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 0;
+      padding: 12px 0;
       border-bottom: 1px solid #f1f3f4;
     }
     
@@ -222,10 +267,23 @@
       border-bottom: none;
     }
     
+    .order-item-details {
+      flex-grow: 1;
+    }
+    
     .order-item-name {
       font-weight: 500;
       color: #333;
-      flex-grow: 1;
+      margin-bottom: 2px;
+    }
+    
+    .order-item-quantity {
+      font-size: 0.9em;
+      color: #666;
+      background: #f8f9fa;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-block;
     }
     
     .order-item-price {
@@ -519,12 +577,58 @@ menuItems.forEach((item, index) => {
 
   div.appendChild(optionsDiv);
 
+  // เพิ่มส่วนเลือกจำนวน
+  const quantityDiv = document.createElement("div");
+  quantityDiv.className = "quantity-section";
+  
+  const minusBtn = document.createElement("button");
+  minusBtn.className = "quantity-btn";
+  minusBtn.textContent = "-";
+  minusBtn.type = "button";
+  
+  const quantityInput = document.createElement("input");
+  quantityInput.type = "number";
+  quantityInput.className = "quantity-input";
+  quantityInput.value = "1";
+  quantityInput.min = "1";
+  quantityInput.max = "99";
+  quantityInput.id = `quantity-${index}`;
+  
+  const plusBtn = document.createElement("button");
+  plusBtn.className = "quantity-btn";
+  plusBtn.textContent = "+";
+  plusBtn.type = "button";
+  
+  minusBtn.onclick = () => {
+    const currentVal = parseInt(quantityInput.value);
+    if (currentVal > 1) {
+      quantityInput.value = currentVal - 1;
+    }
+  };
+  
+  plusBtn.onclick = () => {
+    const currentVal = parseInt(quantityInput.value);
+    if (currentVal < 99) {
+      quantityInput.value = currentVal + 1;
+    }
+  };
+  
+  quantityDiv.appendChild(minusBtn);
+  quantityDiv.appendChild(quantityInput);
+  quantityDiv.appendChild(plusBtn);
+  div.appendChild(quantityDiv);
+
   const btn = document.createElement("button");
   btn.className = "add-btn";
   btn.textContent = "เพิ่มลงตะกร้า";
   btn.onclick = () => {
-    let name = item.name;
-    let price = item.basePrice;
+    // ตรวจสอบเลขโต๊ะก่อน
+    const tableNo = tableInput.value.trim();
+    if (!tableNo) {
+      alert("กรุณาใส่เลขโต๊ะก่อนสั่งอาหาร");
+      tableInput.focus();
+      return;
+    }
 
     if (item.soupType && !soupChoice) {
       alert("กรุณาเลือกประเภท");
@@ -535,6 +639,15 @@ menuItems.forEach((item, index) => {
       return;
     }
 
+    const quantity = parseInt(quantityInput.value);
+    if (quantity < 1) {
+      alert("กรุณาใส่จำนวนที่ถูกต้อง");
+      return;
+    }
+
+    let name = item.name;
+    let price = item.basePrice;
+
     if (item.soupType && soupChoice) name += ` (${soupChoice}`;
     if (item.noodles && noodleChoice) {
       name += soupChoice ? `, ${noodleChoice.type})` : ` (${noodleChoice.type})`;
@@ -543,8 +656,11 @@ menuItems.forEach((item, index) => {
       name += `)`;
     }
 
-    order.push({ name, price });
+    order.push({ name, price, quantity, totalPrice: price * quantity });
     updateOrder();
+    
+    // รีเซ็ตจำนวนกลับเป็น 1
+    quantityInput.value = "1";
   };
 
   div.appendChild(btn);
@@ -552,7 +668,7 @@ menuItems.forEach((item, index) => {
 });
 
 function updateOrder() {
-  const total = order.reduce((sum, item) => sum + item.price, 0);
+  const total = order.reduce((sum, item) => sum + item.totalPrice, 0);
   totalSpan.textContent = `${total} ฿`;
   
   if (order.length === 0) {
@@ -560,8 +676,11 @@ function updateOrder() {
   } else {
     orderListDiv.innerHTML = order.map(item => `
       <div class="order-item">
-        <span class="order-item-name">${item.name}</span>
-        <span class="order-item-price">${item.price} ฿</span>
+        <div class="order-item-details">
+          <div class="order-item-name">${item.name}</div>
+          <div class="order-item-quantity">จำนวน: ${item.quantity}</div>
+        </div>
+        <div class="order-item-price">${item.totalPrice} ฿</div>
       </div>
     `).join('');
   }
@@ -573,8 +692,14 @@ function checkout() {
     return;
   }
   
-  const tableNo = tableInput.value.trim() || "ไม่ระบุ";
-  const total = order.reduce((sum, i) => sum + i.price, 0);
+  const tableNo = tableInput.value.trim();
+  if (!tableNo) {
+    alert("กรุณาใส่เลขโต๊ะก่อนคิดเงิน");
+    tableInput.focus();
+    return;
+  }
+  
+  const total = order.reduce((sum, i) => sum + i.totalPrice, 0);
   
   let receipt = `📋 ใบเสร็จ\n`;
   receipt += `โต๊ะ: ${tableNo}\n`;
@@ -583,7 +708,8 @@ function checkout() {
   receipt += `${'='.repeat(30)}\n`;
   
   order.forEach(item => {
-    receipt += `${item.name} ... ${item.price} ฿\n`;
+    receipt += `${item.name}\n`;
+    receipt += `  ${item.quantity} x ${item.price} = ${item.totalPrice} ฿\n`;
   });
   
   receipt += `${'='.repeat(30)}\n`;
