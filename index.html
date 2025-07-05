@@ -21,7 +21,7 @@
 <button onclick="saveOrder()">💾 บันทึกออเดอร์</button>
 <button onclick="showPendingOrders()">📂 โหลดออเดอร์</button>
 <div class="history" id="pendingList"></div>
-<h1>ร้านก๋วยเตี๋ยวหมูเลียงเจ๊น้อง</h1>
+<h1>POS ร้านก๋วยเตี๋ยว</h1>
 
 <div style="text-align: center; margin-bottom: 10px;">
   <label>โต๊ะเลขที่:</label>
@@ -43,7 +43,6 @@
   <div class="history" id="history"></div>
   <div class="report" id="report"></div>
 </div>
-
 <script>
 let pendingOrders = {}; // ใช้เก็บรายการของแต่ละโต๊ะ
 const menuItems = [
@@ -53,37 +52,7 @@ const menuItems = [
   { name: "น้ำเปล่า", price: 10 },
   { name: "น้ำอัดลม", price: 15 },
 ];
-function calculateFinalPrice(menuItem, selectedNoodleType) {
-  // ค้นหา noodle ที่ผู้ใช้เลือก
-  const noodle = menuItem.options?.noodles?.find(n => n.type === selectedNoodleType);
 
-<<<<<<< HEAD
-  // ถ้าเจอเส้นที่เลือก → รวมราคา
-  const noodlePrice = noodle ? noodle.addPrice : 0;
-
-  // คำนวณราคาสุดท้าย
-  const finalPrice = menuItem.basePrice + noodlePrice;
-
-  return finalPrice;
-}
-finalPrice = basePrice + noodle.addPrice;
-
-// ตัวอย่างเมนูที่ผู้ใช้เลือก
-const selectedItem = menuItems.find(item => item.name === "ก๋วยเตี๋ยวหมูเลียง");
-
-// สมมุติผู้ใช้เลือกเส้น "ไวไว"
-const selectedNoodle = "ไวไว";
-
-// เรียกฟังก์ชัน
-const price = calculateFinalPrice(selectedItem, selectedNoodle);
-
-console.log(`ราคาสุทธิ: ${price} บาท`);
-
-const price = calculateFinalPrice(menuItems.find(i => i.name === "เกาเหลาเลียง"), null);
-// ได้ผลลัพธ์ = 50
-
-=======
->>>>>>> parent of 3e88721 (Update index.html)
 let order = [];
 let salesTotal = Number(localStorage.getItem("salesTotal")) || 0;
 let historyData = JSON.parse(localStorage.getItem("historyData") || "[]");
