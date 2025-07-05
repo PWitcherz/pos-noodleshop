@@ -3,22 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ร้านก๋วยเตี๋ยวหมูเลียงเจ๊น้อง</title>
+  <title>POS ร้านก๋วยเตี๋ยวหมูเลียงเจ๊น้อง</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #fefefe; }
     h1, h3, h4 { text-align: center; }
     .menu { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-    .item { background: #e0f7fa; padding: 10px; border-radius: 10px; text-align: center; }
+    .item { background: #e0f7fa; padding: 10px; border-radius: 10px; cursor: pointer; text-align: center; }
     .item:hover { background: #b2ebf2; }
     .summary { margin-top: 20px; }
     button { padding: 10px 20px; font-size: 16px; margin: 5px; }
     .bill, .history, .report { white-space: pre-wrap; background: #f1f8e9; padding: 10px; border-radius: 10px; margin-top: 10px; }
     input[type="number"] { padding: 8px; font-size: 16px; width: 100px; text-align: center; }
-    label { font-weight: bold; display: block; margin: 5px 0; }
+    label { font-weight: bold; }
   </style>
 </head>
 <body>
+<button onclick="saveOrder()">💾 บันทึกออเดอร์</button>
+<button onclick="showPendingOrders()">📂 โหลดออเดอร์</button>
+<div class="history" id="pendingList"></div>
 <h1>POS ร้านก๋วยเตี๋ยว</h1>
+
 <div style="text-align: center; margin-bottom: 10px;">
   <label>โต๊ะเลขที่:</label>
   <input type="number" id="tableNumber" min="1" placeholder="เช่น 5" />
@@ -33,120 +37,45 @@
   <button onclick="resetAll()">🗑️ ล้างยอดทั้งหมด</button>
   <div class="bill" id="bill"></div>
   <h4>ยอดขายวันนี้: <span id="sales">0</span> บาท</h4>
+  <button onclick="showHistory()">📜 ดูประวัติการขาย</button>
+  <button onclick="exportCSV()">📥 ส่งออก CSV</button>
+  <button onclick="showReport()">📊 รายงานยอดขายแยกตามโต๊ะ</button>
+  <div class="history" id="history"></div>
+  <div class="report" id="report"></div>
 </div>
 
 <script>
+let pendingOrders = {};
 const menuItems = [
-  {
-    name: "ก๋วยเตี๋ยวหมูเลียง",
-    basePrice: 40,
-    soupType: ["น้ำ", "แห้ง"],
-    noodles: [
-      { type: "เส้นเล็ก", addPrice: 0 },
-      { type: "เส้นใหญ่", addPrice: 0 },
-      { type: "บะหมี่", addPrice: 0 },
-      { type: "เส้นหมี่ขาว", addPrice: 0 },
-      { type: "ไวไว", addPrice: 5 }
-    ]
-  },
-  {
-    name: "ก๋วยเตี๋ยวเนื้อเลียง",
-    basePrice: 50,
-    soupType: ["น้ำ", "แห้ง"],
-    noodles: [
-      { type: "เส้นเล็ก", addPrice: 0 },
-      { type: "เส้นใหญ่", addPrice: 0 },
-      { type: "บะหมี่", addPrice: 0 },
-      { type: "เส้นหมี่ขาว", addPrice: 0 },
-      { type: "ไวไว", addPrice: 5 }
-    ]
-  },
-  {
-    name: "ก๋วยเตี๋ยวซี่โครงหมูตุ๋น",
-    basePrice: 60,
-    soupType: ["น้ำ", "แห้ง"],
-    noodles: [
-      { type: "เส้นเล็ก", addPrice: 0 },
-      { type: "เส้นใหญ่", addPrice: 0 },
-      { type: "บะหมี่", addPrice: 0 },
-      { type: "เส้นหมี่ขาว", addPrice: 0 },
-      { type: "ไวไว", addPrice: 5 }
-    ]
-  },
-  {
-    name: "เกาเหลาเลียง",
-    basePrice: 50
-  },
-  { name: "ลูกชิ้นหมู", basePrice: 20 },
-  { name: "ลูกชิ้นเนื้อ", basePrice: 25 },
-  { name: "แคปหมู", basePrice: 15 },
-  { name: "ข้าวสวย", basePrice: 10 }
+  { name: "ก๋วยเตี๋ยวหมูเลียง", price: 50 },
+  { name: "เส้นเล็กแห้ง", price: 40 },
+  { name: "เกาเหลา", price: 50 },
+  { name: "น้ำเปล่า", price: 10 },
+  { name: "น้ำอัดลม", price: 15 },
 ];
 
 let order = [];
-let salesTotal = 0;
+let salesTotal = Number(localStorage.getItem("salesTotal")) || 0;
+let historyData = JSON.parse(localStorage.getItem("historyData") || "[]");
+
 const menuDiv = document.getElementById("menu");
 const totalSpan = document.getElementById("total");
 const salesSpan = document.getElementById("sales");
 const billDiv = document.getElementById("bill");
+const historyDiv = document.getElementById("history");
+const reportDiv = document.getElementById("report");
 const tableInput = document.getElementById("tableNumber");
 
-menuItems.forEach((item, index) => {
+salesSpan.textContent = salesTotal;
+
+menuItems.forEach(item => {
   const div = document.createElement("div");
   div.className = "item";
-
-  const label = document.createElement("label");
-  label.textContent = item.name;
-  div.appendChild(label);
-
-  let soupChoice = null;
-  let noodleChoice = null;
-
-  if (item.soupType) {
-    item.soupType.forEach(soup => {
-      const chk = document.createElement("input");
-      chk.type = "radio";
-      chk.name = `soup-${index}`;
-      chk.value = soup;
-      chk.onchange = () => soupChoice = soup;
-      div.appendChild(chk);
-      div.appendChild(document.createTextNode(soup));
-    });
-    div.appendChild(document.createElement("br"));
-  }
-
-  if (item.noodles) {
-    item.noodles.forEach(n => {
-      const chk = document.createElement("input");
-      chk.type = "radio";
-      chk.name = `noodle-${index}`;
-      chk.value = n.type;
-      chk.onchange = () => noodleChoice = n;
-      div.appendChild(chk);
-      div.appendChild(document.createTextNode(n.type + (n.addPrice ? ` (+${n.addPrice})` : "")));
-    });
-    div.appendChild(document.createElement("br"));
-  }
-
-  const btn = document.createElement("button");
-  btn.textContent = "เพิ่ม";
-  btn.onclick = () => {
-    let name = item.name;
-    let price = item.basePrice;
-
-    if (item.soupType && soupChoice) name += ` (${soupChoice}`;
-    if (item.noodles && noodleChoice) {
-      name += soupChoice ? `, ${noodleChoice.type})` : ` (${noodleChoice.type})`;
-      price += noodleChoice.addPrice;
-    } else if (item.soupType && soupChoice) {
-      name += `)`;
-    }
-
-    order.push({ name, price });
+  div.textContent = `${item.name} - ${item.price} บาท`;
+  div.onclick = () => {
+    order.push(item);
     updateTotal();
   };
-
-  div.appendChild(btn);
   menuDiv.appendChild(div);
 });
 
@@ -154,41 +83,155 @@ function updateTotal() {
   const total = order.reduce((sum, item) => sum + item.price, 0);
   totalSpan.textContent = total;
   const tableNo = tableInput.value.trim() || "-";
-  let text = `รายการโต๊ะ ${tableNo}
-`;
+  let text = `รายการโต๊ะ ${tableNo}\n`;
   order.forEach(item => {
-    text += `- ${item.name} (${item.price} บาท)
-`;
+    text += `- ${item.name} (${item.price} บาท)\n`;
   });
   text += `รวมทั้งหมด: ${total} บาท`;
   billDiv.textContent = text;
 }
 
 function checkout() {
-  if (order.length === 0) {
-    alert("ยังไม่มีรายการ");
+  const tableNo = tableInput.value.trim();
+  if (!tableNo) {
+    alert("กรุณาใส่เลขโต๊ะก่อนคิดเงิน");
     return;
   }
-  const total = order.reduce((sum, i) => sum + i.price, 0);
+  if (order.length === 0) {
+    alert("ยังไม่มีรายการสั่ง");
+    return;
+  }
+  const time = new Date().toLocaleString("th-TH");
+  const total = order.reduce((sum, item) => sum + item.price, 0);
+
+  billDiv.textContent = `ใบเสร็จ (โต๊ะ ${tableNo})\n` +
+    order.map(i => `- ${i.name} (${i.price} บาท)`).join("\n") +
+    `\nรวมทั้งหมด: ${total} บาท\nเวลา: ${time}`;
+
+  historyData.push({ table: tableNo, items: [...order], total, time });
   salesTotal += total;
+  localStorage.setItem("salesTotal", salesTotal);
+  localStorage.setItem("historyData", JSON.stringify(historyData));
+
+  fetch("https://script.google.com/macros/s/AKfycbwi4dZUNFJabRap4erLWBumtUSzi0szMuRLZvFjnXsmt9VRN2ZeEi_txAfFtJ45NlysWQ/exec", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      table: tableNo,
+      items: order.map(i => i.name),
+      total: total
+    })
+  });
+
   salesSpan.textContent = salesTotal;
   order = [];
   updateTotal();
+  historyDiv.textContent = "";
+  reportDiv.textContent = "";
+  delete pendingOrders[tableNo];
 }
 
 function undoItem() {
-  order.pop();
-  updateTotal();
+  if (order.length > 0) {
+    order.pop();
+    updateTotal();
+  }
 }
 
 function resetAll() {
   if (confirm("ล้างข้อมูลทั้งหมด?")) {
-    salesTotal = 0;
+    localStorage.removeItem("salesTotal");
+    localStorage.removeItem("historyData");
     order = [];
+    salesTotal = 0;
+    historyData = [];
     updateTotal();
-    salesSpan.textContent = 0;
+    salesSpan.textContent = "0";
     billDiv.textContent = "";
+    historyDiv.textContent = "";
+    reportDiv.textContent = "";
   }
+}
+
+function showHistory() {
+  if (historyData.length === 0) {
+    historyDiv.textContent = "ยังไม่มีประวัติการขาย";
+    return;
+  }
+  let text = "ประวัติการขาย:\n";
+  historyData.slice().reverse().forEach((r, i) => {
+    text += `\n#${historyData.length - i} | โต๊ะ ${r.table} | เวลา: ${r.time}\n`;
+    r.items.forEach(it => text += `- ${it.name} (${it.price} บาท)\n`);
+    text += `รวม: ${r.total} บาท\n`;
+  });
+  historyDiv.textContent = text;
+  reportDiv.textContent = "";
+}
+
+function exportCSV() {
+  if (historyData.length === 0) {
+    alert("ยังไม่มีข้อมูล");
+    return;
+  }
+  let csv = "โต๊ะ,เวลา,รายการ,ราคารวม\n";
+  historyData.forEach(r => {
+    const items = r.items.map(i => i.name).join(" + ");
+    csv += `${r.table},"${r.time}","${items}",${r.total}\n`;
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "pos_jer_nong.csv";
+  link.click();
+}
+
+function showReport() {
+  if (historyData.length === 0) {
+    reportDiv.textContent = "ยังไม่มีข้อมูล";
+    return;
+  }
+  const summary = {};
+  historyData.forEach(r => {
+    if (!summary[r.table]) summary[r.table] = 0;
+    summary[r.table] += r.total;
+  });
+  let text = "รายงานยอดขายแยกตามโต๊ะ:\n";
+  Object.entries(summary).forEach(([table, total]) => {
+    text += `โต๊ะ ${table}: ${total} บาท\n`;
+  });
+  reportDiv.textContent = text;
+  historyDiv.textContent = "";
+}
+
+function saveOrder() {
+  const tableNo = tableInput.value.trim();
+  if (!tableNo || order.length === 0) {
+    alert("กรุณาใส่เลขโต๊ะ และมีรายการก่อนบันทึก");
+    return;
+  }
+  pendingOrders[tableNo] = [...order];
+  alert("บันทึกออเดอร์โต๊ะ " + tableNo + " เรียบร้อยแล้ว");
+}
+
+function loadOrderByTable(tableNo) {
+  if (!pendingOrders[tableNo]) return;
+  order = [...pendingOrders[tableNo]];
+  tableInput.value = tableNo;
+  updateTotal();
+}
+
+function showPendingOrders() {
+  const keys = Object.keys(pendingOrders);
+  const pendingDiv = document.getElementById("pendingList");
+  if (keys.length === 0) {
+    pendingDiv.textContent = "ยังไม่มีโต๊ะที่บันทึกออเดอร์ไว้";
+    return;
+  }
+  let html = "📋 โต๊ะที่บันทึกไว้:<br>";
+  keys.forEach(table => {
+    html += `<button onclick="loadOrderByTable('${table}')">โต๊ะ ${table}</button> `;
+  });
+  pendingDiv.innerHTML = html;
 }
 </script>
 </body>
