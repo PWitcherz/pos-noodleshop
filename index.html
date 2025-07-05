@@ -140,7 +140,65 @@ const tableInput = document.getElementById("tableNumber");
 
 salesSpan.textContent = salesTotal;
 
-// สร้างเมนู
+
+// สร้างเมนู (พร้อม UI เลือกน้ำ/เส้น)
+menuItems.forEach((item, index) => {
+  const div = document.createElement("div");
+  div.className = "item";
+
+  if (!item.options) {
+    div.textContent = `${item.name} - ${item.basePrice} บาท`;
+    div.onclick = () => {
+      order.push({ name: item.name, price: item.basePrice });
+      updateTotal();
+    };
+  } else {
+    const label = document.createElement("label");
+    label.textContent = item.name;
+    div.appendChild(label);
+
+    const soupSelect = document.createElement("select");
+    item.options.soupType.forEach(soup => {
+      const opt = document.createElement("option");
+      opt.value = soup;
+      opt.textContent = soup;
+      soupSelect.appendChild(opt);
+    });
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createTextNode("น้ำ/แห้ง: "));
+    div.appendChild(soupSelect);
+
+    const noodleSelect = document.createElement("select");
+    item.options.noodles.forEach(n => {
+      const opt = document.createElement("option");
+      opt.value = n.type;
+      opt.textContent = n.type + (n.addPrice ? ` (+${n.addPrice} บาท)` : "");
+      noodleSelect.appendChild(opt);
+    });
+    div.appendChild(document.createElement("br"));
+    div.appendChild(document.createTextNode("เส้น: "));
+    div.appendChild(noodleSelect);
+
+    const btn = document.createElement("button");
+    btn.textContent = "เพิ่ม";
+    btn.onclick = () => {
+      const soup = soupSelect.value;
+      const noodle = noodleSelect.value;
+      const noodleData = item.options.noodles.find(n => n.type === noodle);
+      const finalPrice = item.basePrice + (noodleData?.addPrice || 0);
+      order.push({
+        name: `${item.name} (${soup}, ${noodle})`,
+        price: finalPrice
+      });
+      updateTotal();
+    };
+    div.appendChild(document.createElement("br"));
+    div.appendChild(btn);
+  }
+
+  menuDiv.appendChild(div);
+});
+
 menuItems.forEach(item => {
   const div = document.createElement("div");
   div.className = "item";
