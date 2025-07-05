@@ -47,89 +47,17 @@
 <script>
 let pendingOrders = {}; // ใช้เก็บรายการของแต่ละโต๊ะ
 const menuItems = [
-  {
-    name: "ก๋วยเตี๋ยวหมูเลียง",
-    type: "หมูเลียง",
-    basePrice: 40,
-    options: {
-      soupType: ["น้ำ", "แห้ง"],
-      noodles: [
-        { type: "เส้นเล็ก", addPrice: 0 },
-        { type: "เส้นใหญ่", addPrice: 0 },
-        { type: "บะหมี่", addPrice: 0 },
-        { type: "เส้นหมี่ขาว", addPrice: 0 },
-        { type: "ไวไว", addPrice: 5 }
-      ]
-    }
-  },
-  {
-    name: "ก๋วยเตี๋ยวเนื้อเลียง",
-    type: "เนื้อเลียง",
-    basePrice: 50,
-    options: {
-      soupType: ["น้ำ", "แห้ง"],
-      noodles: [
-        { type: "เส้นเล็ก", addPrice: 0 },
-        { type: "เส้นใหญ่", addPrice: 0 },
-        { type: "บะหมี่", addPrice: 0 },
-        { type: "เส้นหมี่ขาว", addPrice: 0 },
-        { type: "ไวไว", addPrice: 5 }
-      ]
-    }
-  },
-  {
-    name: "ก๋วยเตี๋ยวซี่โครงหมูตุ๋น",
-    type: "ซี่โครงหมู",
-    basePrice: 60,
-    options: {
-      soupType: ["น้ำ", "แห้ง"],
-      noodles: [
-        { type: "เส้นเล็ก", addPrice: 0 },
-        { type: "เส้นใหญ่", addPrice: 0 },
-        { type: "บะหมี่", addPrice: 0 },
-        { type: "เส้นหมี่ขาว", addPrice: 0 },
-        { type: "ไวไว", addPrice: 5 }
-      ]
-    }
-  },
-  {
-    name: "เกาเหลาเลียง",
-    type: "เกาเหลา",
-    basePrice: 50,
-    options: {
-      soupType: ["น้ำ"],
-      noodles: [] // ไม่มีเส้น
-    }
-  },
-  {
-    name: "ลูกชิ้นหมู",
-    type: "ของกินเล่น",
-    basePrice: 20,
-    options: null
-  },
-  {
-    name: "ลูกชิ้นเนื้อ",
-    type: "ของกินเล่น",
-    basePrice: 25,
-    options: null
-  },
-  {
-    name: "แคปหมู",
-    type: "ของกินเล่น",
-    basePrice: 15,
-    options: null
-  },
-  {
-    name: "ข้าวสวย",
-    type: "ข้าว",
-    basePrice: 10,
-    options: null
-  }
+  { name: "ก๋วยเตี๋ยวหมูเลียง", price: 50 },
+  { name: "เส้นเล็กแห้ง", price: 40 },
+  { name: "เกาเหลา", price: 50 },
+  { name: "น้ำเปล่า", price: 10 },
+  { name: "น้ำอัดลม", price: 15 },
 ];
 function calculateFinalPrice(menuItem, selectedNoodleType) {
   // ค้นหา noodle ที่ผู้ใช้เลือก
   const noodle = menuItem.options?.noodles?.find(n => n.type === selectedNoodleType);
 
+<<<<<<< HEAD
   // ถ้าเจอเส้นที่เลือก → รวมราคา
   const noodlePrice = noodle ? noodle.addPrice : 0;
 
@@ -154,6 +82,8 @@ console.log(`ราคาสุทธิ: ${price} บาท`);
 const price = calculateFinalPrice(menuItems.find(i => i.name === "เกาเหลาเลียง"), null);
 // ได้ผลลัพธ์ = 50
 
+=======
+>>>>>>> parent of 3e88721 (Update index.html)
 let order = [];
 let salesTotal = Number(localStorage.getItem("salesTotal")) || 0;
 let historyData = JSON.parse(localStorage.getItem("historyData") || "[]");
