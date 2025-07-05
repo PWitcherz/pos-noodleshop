@@ -126,7 +126,33 @@ const menuItems = [
     options: null
   }
 ];
+function calculateFinalPrice(menuItem, selectedNoodleType) {
+  // ค้นหา noodle ที่ผู้ใช้เลือก
+  const noodle = menuItem.options?.noodles?.find(n => n.type === selectedNoodleType);
 
+  // ถ้าเจอเส้นที่เลือก → รวมราคา
+  const noodlePrice = noodle ? noodle.addPrice : 0;
+
+  // คำนวณราคาสุดท้าย
+  const finalPrice = menuItem.basePrice + noodlePrice;
+
+  return finalPrice;
+}
+finalPrice = basePrice + noodle.addPrice;
+
+// ตัวอย่างเมนูที่ผู้ใช้เลือก
+const selectedItem = menuItems.find(item => item.name === "ก๋วยเตี๋ยวหมูเลียง");
+
+// สมมุติผู้ใช้เลือกเส้น "ไวไว"
+const selectedNoodle = "ไวไว";
+
+// เรียกฟังก์ชัน
+const price = calculateFinalPrice(selectedItem, selectedNoodle);
+
+console.log(`ราคาสุทธิ: ${price} บาท`);
+
+const price = calculateFinalPrice(menuItems.find(i => i.name === "เกาเหลาเลียง"), null);
+// ได้ผลลัพธ์ = 50
 
 let order = [];
 let salesTotal = Number(localStorage.getItem("salesTotal")) || 0;
